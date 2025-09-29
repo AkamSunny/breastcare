@@ -11,22 +11,38 @@ app = Flask(__name__)
 
 
 
-# Route for the home page (prediction tool)
+from flask import Flask, render_template, request
+import pandas as pd
+import numpy as np
+from xgboost import XGBClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+import os
+
+app = Flask(__name__)
+
+# ✅ Healthcheck route
+@app.route("/ping")
+def ping():
+    return {"status": "ok", "message": "Flask app is alive!"}
+
+# Route for the home page
 @app.route("/")
 def home():
     return render_template("home.html", query="")
-
 
 # Route for the about page
 @app.route("/about")
 def about():
     return render_template("about.html")
 
-
-# Add this route to your existing Flask app
+# Route for the contact page
 @app.route("/contact")
 def contact():
     return render_template("contact.html")
+
+# ... (keep your /predict route as you already have it)
+
 
 
 # Route to handle form submission
