@@ -13,6 +13,12 @@ import os
 app = Flask(__name__)
 
 
+
+# 🔹 Health check route for debugging
+@app.route("/ping")
+def ping():
+    return "App is alive!"
+
 # Route for the home page (prediction tool)
 @app.route("/")
 def home():
