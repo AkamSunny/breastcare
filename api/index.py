@@ -1,140 +1,82 @@
-import pandas as pd
-import numpy as np
-from xgboost import XGBClassifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-import math
-from flask import Flask, render_template, request
-import re
-
-app = Flask(__name__)
-
-
-
 from flask import Flask, render_template, request
 import pandas as pd
 import numpy as np
 from xgboost import XGBClassifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
+import joblib   # for saving/loading scaler
 import os
 
 app = Flask(__name__)
 
-# ✅ Healthcheck route
+#  Load model
+model = XGBClassifier()
+model.load_model("xgb_breastcare.json")
+
+# Load saved scaler
+scaler = joblib.load("scaler.pkl")
+
 @app.route("/ping")
 def ping():
     return {"status": "ok", "message": "Flask app is alive!"}
 
-# Route for the home page
 @app.route("/")
 def home():
     return render_template("home.html", query="")
 
-# Route for the about page
 @app.route("/about")
 def about():
     return render_template("about.html")
 
-# Route for the contact page
 @app.route("/contact")
 def contact():
     return render_template("contact.html")
 
-# ... (keep your /predict route as you already have it)
-
-
-
-# Route to handle form submission
-@app.route("/predict", methods=['POST'])
+@app.route("/predict", methods=["POST"])
 def cancerPrediction():
     try:
-
-        import os
-
-        # Try local path first, then Vercel path
-        csv_local = os.path.join(os.getcwd(), "breast_cancer.csv")
-        csv_vercel = os.path.join(os.path.dirname(__file__), "..", "breast_cancer.csv")
-
-        if os.path.exists(csv_local):
-            csv_path = csv_local
-        else:
-            csv_path = csv_vercel
-
-        df_xgb = pd.read_csv(csv_path)
-
-        # Get and validate inputs
+        #  Get inputs from form
         inputQuery1 = float(request.form['query1'])
         inputQuery2 = float(request.form['query2'])
         inputQuery3 = float(request.form['query3'])
         inputQuery4 = float(request.form['query4'])
         inputQuery5 = float(request.form['query5'])
 
-        features = ['perimeter_worst', 'concave points_worst', 'concave points_mean', 'area_mean', 'area_worst',
-                    'diagnosis']
-        xgb_df = df_xgb[features]
-
-        xgb_df['diagnosis'] = xgb_df['diagnosis'].map({'M': 1, 'B': 0})
-
-        xgb_x2 = xgb_df.drop('diagnosis', axis=1)
-        y_xgb = xgb_df['diagnosis']
-
-        # train_test_split
-        xgb_train_x, xgb_test_x, y_train, y_test = train_test_split(xgb_x2, y_xgb, test_size=0.2, random_state=3)
-
-        # Feature Scaling Using StandardScaler
-        xgb_sc = StandardScaler()
-        xgb_train_x = xgb_sc.fit_transform(xgb_train_x)
-        xgb_test_x = xgb_sc.transform(xgb_test_x)
-
-        # Out of sample prediction
-        xgb2 = XGBClassifier(n_estimators=200, max_depth=3, learning_rate=0.05, scale_pos_weight=357 / 212,
-                             reg_alpha=0.5, reg_lambda=2.0, subsample=0.7, random_state=42)
-
-        xgb2.fit(xgb_train_x, y_train)
-
-        # Preparing the Model for out of sample Prediction
+        #  Put inputs into a DataFrame
         data = [[inputQuery1, inputQuery2, inputQuery3, inputQuery4, inputQuery5]]
-        new_df = pd.DataFrame(data,
-                              columns=['perimeter_worst', 'concave points_worst', 'concave points_mean', 'area_mean',
-                                       'area_worst'])
+        new_df = pd.DataFrame(data, columns=[
+            'perimeter_worst',
+            'concave points_worst',
+            'concave points_mean',
+            'area_mean',
+            'area_worst'
+        ])
 
-        # Scaling out of sample data
-        new_df_scaled = xgb_sc.transform(new_df)
+        #  Scale input features
+        new_df_scaled = scaler.transform(new_df)
 
-        # predicting Out sample data
-        real_pred = xgb2.predict(new_df_scaled)
-        real_proba = xgb2.predict_proba(new_df_scaled)
+        #  Prediction
+        real_pred = model.predict(new_df_scaled)
+        real_proba = model.predict_proba(new_df_scaled)
 
-        # FIX: Extract the probability correctly from the 2D array
         if real_pred[0] == 1:
             output1 = "The patient is diagnosed with Breast Cancer"
-            # Get the probability for class 1 (second column) and convert to scalar
             confidence = float(real_proba[0][1] * 100)
-            output2 = "Confidence: {:.2f}%".format(confidence)
+            output2 = f"Confidence: {confidence:.2f}%"
         else:
             output1 = "The patient is not diagnosed with Breast Cancer"
-            # Get the probability for class 0 (first column)
             confidence = float(real_proba[0][0] * 100)
-            output2 = "Confidence: {:.2f}%".format(confidence)
+            output2 = f"Confidence: {confidence:.2f}%"
 
-        return render_template("home.html", output1=output1, output2=output2,
-                               query1=request.form['query1'], query2=request.form['query2'],
-                               query3=request.form['query3'], query4=request.form['query4'],
-                               query5=request.form['query5'])
+        return render_template(
+            "home.html",
+            output1=output1, output2=output2,
+            query1=request.form['query1'], query2=request.form['query2'],
+            query3=request.form['query3'], query4=request.form['query4'],
+            query5=request.form['query5']
+        )
 
     except Exception as e:
-        # Handle any errors gracefully
-        error_message = f"Error processing request: {str(e)}"
-        return render_template("home.html", output1=error_message, output2="",
-                               query1=request.form.get('query1', ''),
-                               query2=request.form.get('query2', ''),
-                               query3=request.form.get('query3', ''),
-                               query4=request.form.get('query4', ''),
-                               query5=request.form.get('query5', ''))
-
+        error_message = f"Error: {str(e)}"
+        return render_template("home.html", output1=error_message, output2="")
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
-
-
