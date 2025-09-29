@@ -6,6 +6,9 @@ from sklearn.model_selection import train_test_split
 import math
 from flask import Flask, render_template, request
 import re
+import os
+
+
 
 app = Flask(__name__)
 
@@ -32,7 +35,11 @@ def contact():
 @app.route("/predict", methods=['POST'])
 def cancerPrediction():
     try:
-        df_xgb = pd.read_csv('breast_cancer.csv')
+
+
+        csv_path = os.path.join(os.path.dirname(__file__), "..", "breast_cancer.csv")
+        df_xgb = pd.read_csv(csv_path)
+
 
         # Get and validate inputs
         inputQuery1 = float(request.form['query1'])
