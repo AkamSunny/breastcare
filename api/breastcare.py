@@ -105,7 +105,7 @@ def cancerPrediction():
                                query5=request.form.get('query5', ''))
 
 
-def handler(request, *args, **kwargs):
-    return app(request.environ, request.start_response)
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
 
 
