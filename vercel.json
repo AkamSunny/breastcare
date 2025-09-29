@@ -1,15 +1,15 @@
 {
-
+  "version": 2,
   "builds": [
     {
-      "src": "breastcare.py",
+      "src": "api/breastcare.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/{.*}",
-      "dest": "breastcare.py"
+      "dest": "api/breastcare.py"
     }
   ]
 }
