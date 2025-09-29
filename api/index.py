@@ -6,10 +6,8 @@ from sklearn.model_selection import train_test_split
 import math
 from flask import Flask, render_template, request
 import re
-import os
 
-
-app = Flask(__name__, template_folder="../templates")
+app = Flask(__name__)
 
 
 
@@ -36,12 +34,18 @@ def contact():
 def cancerPrediction():
     try:
 
+        import os
 
+        # Try local path first, then Vercel path
+        csv_local = os.path.join(os.getcwd(), "breast_cancer.csv")
+        csv_vercel = os.path.join(os.path.dirname(__file__), "..", "breast_cancer.csv")
 
-        csv_path = os.path.join(os.path.dirname(__file__), "..", "breast_cancer.csv")
+        if os.path.exists(csv_local):
+            csv_path = csv_local
+        else:
+            csv_path = csv_vercel
+
         df_xgb = pd.read_csv(csv_path)
-
-
 
         # Get and validate inputs
         inputQuery1 = float(request.form['query1'])
