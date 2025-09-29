@@ -32,7 +32,7 @@ def contact():
 @app.route("/predict", methods=['POST'])
 def cancerPrediction():
     try:
-        df_xgb = pd.read_csv('breast_cancer.csv')
+        df_xgb = pd.read_csv('../breast_cancer.csv')
 
         # Get and validate inputs
         inputQuery1 = float(request.form['query1'])
